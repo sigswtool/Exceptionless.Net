@@ -12,7 +12,7 @@ using Exceptionless.Dependency;
 using System.Text;
 
 namespace Exceptionless.AspNetCore {
-    internal static class RequestInfoCollector {
+    public static class RequestInfoCollector {
         private const int MAX_BODY_SIZE = 50 * 1024;
         public static RequestInfo Collect(HttpContext context, ExceptionlessConfiguration config) {
             if (context == null)
@@ -30,8 +30,7 @@ namespace Exceptionless.AspNetCore {
             if (!String.IsNullOrEmpty(context.Request.Host.Host))
                 info.Host = context.Request.Host.Host;
 
-            if (context.Request.Host.Port.HasValue)
-                info.Port = context.Request.Host.Port.Value;
+            info.Port = context.Request.Host.Port.GetValueOrDefault(info.IsSecure ? 443 : 80);
 
             if (context.Request.Headers.ContainsKey(HeaderNames.UserAgent))
                 info.UserAgent = context.Request.Headers[HeaderNames.UserAgent].ToString();
@@ -46,9 +45,8 @@ namespace Exceptionless.AspNetCore {
             if (config.IncludeQueryString)
                 info.QueryString = context.Request.Query.ToDictionary(exclusionList);
 
-            if (config.IncludePostData) {
+            if (config.IncludePostData)
                 info.PostData = GetPostData(context, config, exclusionList);
-            }
 
             return info;
         }
@@ -105,7 +103,7 @@ namespace Exceptionless.AspNetCore {
                     int bufferSize = (int)Math.Min(1024, maxDataToRead);
 
                     char[] buffer = new char[bufferSize];
-                    while ((numRead = inputStream.ReadBlock(buffer, 0, bufferSize)) > 0 && (sb.Length + numRead) < maxDataToRead) {
+                    while ((numRead = inputStream.ReadBlock(buffer, 0, bufferSize)) > 0 && (sb.Length + numRead) <= maxDataToRead) {
                         sb.Append(buffer, 0, numRead);
                     }
                     string postData = sb.ToString();

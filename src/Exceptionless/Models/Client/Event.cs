@@ -72,7 +72,8 @@ namespace Exceptionless.Models {
             return Equals((Event)obj);
         }
 
-        private static readonly List<string> _exclusions = new List<string> { KnownDataKeys.TraceLog }; 
+        private static readonly ISet<string> _exclusions = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase) { KnownDataKeys.TraceLog };
+
         public override int GetHashCode() {
             unchecked {
                 var hashCode = Type == null ? 0 : Type.GetHashCode();

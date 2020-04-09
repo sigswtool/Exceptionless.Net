@@ -19,16 +19,9 @@
       <PackagePath>tools</PackagePath>
       <Pack>true</Pack>
     </None>
-    <None Include="readme.txt">
-      <PackagePath></PackagePath>
-      <Pack>true</Pack>
-    </None>
+    <None Include="readme.txt" pack="true" PackagePath="." />
   </ItemGroup>
 
-  <ItemGroup Label="Build">
-    <Compile Include="..\..\GlobalAssemblyInfo.cs" Link="Properties\GlobalAssemblyInfo.cs" />
-  </ItemGroup>
-  
   <ItemGroup Label="Project References">
     <ProjectReference Include="..\..\Exceptionless\Exceptionless.csproj" />
   </ItemGroup>

@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if NET45
+using System;
+using System.Threading.Tasks;
 using Exceptionless.Dependency;
 using Exceptionless.Logging;
 using Exceptionless.Serializer;
@@ -27,8 +29,8 @@ namespace Exceptionless.Tests.Log {
         }
 
         [Fact]
-        public override void LogFlushTimerWorks() {
-            base.LogFlushTimerWorks();
+        public override Task LogFlushTimerWorks() {
+            return base.LogFlushTimerWorks();
         }
 
         [Fact]
@@ -59,3 +61,5 @@ namespace Exceptionless.Tests.Log {
         }
     }
 }
+
+#endif

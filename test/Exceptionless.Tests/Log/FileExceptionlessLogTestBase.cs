@@ -15,14 +15,14 @@ namespace Exceptionless.Tests.Log {
                 log.Info("Test");
                 log.Flush();
 
-                Assert.True(LogExists());
+                Assert.True(LogExists(log.FilePath));
                 string contents = log.GetFileContents();
 
-                Assert.EndsWith(" Info  Test\r\n", contents);
+                Assert.Contains(" Info  Test", contents);
             }
         }
 
-        public virtual void LogFlushTimerWorks() {
+        public virtual async Task LogFlushTimerWorks() {
             DeleteLog();
 
             using (var log = GetLog(LOG_FILE)) {
@@ -31,12 +31,12 @@ namespace Exceptionless.Tests.Log {
                 string contents = log.GetFileContents();
                 Assert.Equal("", contents);
 
-                Thread.Sleep(1010 * 3);
+                await Task.Delay(TimeSpan.FromMilliseconds(3100));
 
-                Assert.True(LogExists());
+                Assert.True(LogExists(log.FilePath));
                 contents = log.GetFileContents();
 
-                Assert.EndsWith(" Info  Test\r\n", contents);
+                Assert.Contains(" Info  Test", contents);
             }
         }
 

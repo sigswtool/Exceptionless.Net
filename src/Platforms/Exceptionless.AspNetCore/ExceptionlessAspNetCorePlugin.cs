@@ -8,9 +8,18 @@ using Exceptionless.Models;
 
 namespace Exceptionless.AspNetCore {
     [Priority(90)]
-    internal class ExceptionlessAspNetCorePlugin : IEventPlugin {
+    public class ExceptionlessAspNetCorePlugin : IEventPlugin {
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        
+        public ExceptionlessAspNetCorePlugin(IHttpContextAccessor httpContextAccessor = null) {
+            _httpContextAccessor = httpContextAccessor;
+        }
+
         public void Run(EventPluginContext context) {
             var httpContext = context.ContextData.GetHttpContext();
+            if (httpContext == null && _httpContextAccessor != null)
+                httpContext = _httpContextAccessor.HttpContext;
+
             var serializer = context.Client.Configuration.Resolver.GetJsonSerializer();
             if (context.Client.Configuration.IncludeUserName)
                 AddUser(context, httpContext, serializer);

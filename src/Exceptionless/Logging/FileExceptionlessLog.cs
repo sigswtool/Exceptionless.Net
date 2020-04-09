@@ -1,5 +1,4 @@
-﻿#if !PORTABLE && !NETSTANDARD1_2
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
@@ -13,6 +12,7 @@ namespace Exceptionless.Logging {
         private readonly bool _append;
         private bool _firstWrite = true;
         private bool _isFlushing = false;
+        private bool _isCheckingFileSize = false;
 
         public FileExceptionlessLog(string filePath, bool append = false) {
             if (String.IsNullOrEmpty(filePath))
@@ -40,7 +40,7 @@ namespace Exceptionless.Logging {
         protected virtual WrappedDisposable<StreamWriter> GetWriter(bool append = false) {
 #if NETSTANDARD
             return new WrappedDisposable<StreamWriter>(new StreamWriter(
-                new FileStream(FilePath, append ? FileMode.Append : FileMode.Truncate, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)
+                new FileStream(FilePath, append ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8)
             );
 #else
             return new WrappedDisposable<StreamWriter>(new StreamWriter(FilePath, append, Encoding.UTF8));
@@ -66,7 +66,7 @@ namespace Exceptionless.Logging {
             try {
                 if (File.Exists(FilePath))
                     return new FileInfo(FilePath).Length;
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 System.Diagnostics.Trace.WriteLine("Exceptionless: Error getting size of file: {0}", ex.Message);
             }
 
@@ -116,11 +116,15 @@ namespace Exceptionless.Logging {
         }
 
         public void Flush() {
-            if (_isFlushing || _buffer.Count == 0)
+            if (_isFlushing || _buffer.IsEmpty)
                 return;
 
-            if (DateTime.Now.Subtract(_lastSizeCheck).TotalSeconds > 120)
+            // Only check if appending file and size hasn't been checked in 2 minutes
+            if ((_append || !_firstWrite) && DateTime.UtcNow.Subtract(_lastSizeCheck).TotalSeconds > 120)
                 CheckFileSize();
+
+            if (_isFlushing || _buffer.IsEmpty)
+                return;
 
             try {
                 _isFlushing = true;
@@ -189,14 +193,20 @@ namespace Exceptionless.Logging {
             _buffer.Enqueue(new LogEntry(level, entry));
         }
 
-        private DateTime _lastSizeCheck = DateTime.Now;
+        private DateTime _lastSizeCheck = DateTime.UtcNow;
         protected const long FIVE_MB = 5 * 1024 * 1024;
 
         internal void CheckFileSize() {
-            _lastSizeCheck = DateTime.Now;
-
-            if (GetFileSize() <= FIVE_MB)
+            if (_isCheckingFileSize)
                 return;
+
+            _isCheckingFileSize = true;
+            _lastSizeCheck = DateTime.UtcNow;
+
+            if (GetFileSize() <= FIVE_MB) {
+                _isCheckingFileSize = false;
+                return;
+            }
 
             // get the last X lines from the current file
             string lastLines = String.Empty;
@@ -212,8 +222,10 @@ namespace Exceptionless.Logging {
                 System.Diagnostics.Trace.WriteLine("Exceptionless: Error getting last X lines from the log file: {0}", ex.Message);
             }
 
-            if (String.IsNullOrEmpty(lastLines))
+            if (String.IsNullOrEmpty(lastLines)) {
+                _isCheckingFileSize = false;
                 return;
+            }
 
             // overwrite the log file and initialize it with the last X lines it had
             try {
@@ -226,6 +238,8 @@ namespace Exceptionless.Logging {
             } catch (Exception ex) {
                 System.Diagnostics.Trace.WriteLine("Exceptionless: Error rewriting the log file after trimming it: {0}", ex.Message);
             }
+
+            _isCheckingFileSize = false;
         }
 
         private void OnFlushTimer(object state) {
@@ -288,4 +302,3 @@ namespace Exceptionless.Logging {
         }
     }
 }
-#endif

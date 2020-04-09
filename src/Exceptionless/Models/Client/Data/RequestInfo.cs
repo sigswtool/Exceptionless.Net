@@ -83,7 +83,7 @@ namespace Exceptionless.Models.Data {
             return Equals((RequestInfo)obj);
         }
 
-        private static readonly List<string> _cookieHashCodeExclusions = new List<string> { "__LastReferenceId" };
+        private static readonly ISet<string> _cookieHashCodeExclusions = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase) { "__LastReferenceId" };
 
         public override int GetHashCode() {
             unchecked {
